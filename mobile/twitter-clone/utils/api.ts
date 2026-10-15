@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuth } from "@clerk/clerk-expo";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://twitter-clone-sooty-rho-61.vercel.app/";
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || "https://twitter-clone-sooty-rho-61.vercel.app").replace(/\/$/, "");
 
 export const createApiClient = (getToken: () => Promise<string | null>): AxiosInstance => {
   const api = axios.create({ baseURL: API_BASE_URL });
