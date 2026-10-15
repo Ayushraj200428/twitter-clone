@@ -7,12 +7,12 @@ export const useNotifications = () => {
 
   const { data: notificationsData, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => api.get("/notifications"),
+    queryFn: () => api.get("/api/notifications"),
     select: (res) => res.data.notifications,
   });
 
   const deleteNotificationMutation = useMutation({
-    mutationFn: (notificationId: string) => api.delete(`/notifications/${notificationId}`),
+    mutationFn: (notificationId: string) => api.delete(`/api/notifications/${notificationId}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
