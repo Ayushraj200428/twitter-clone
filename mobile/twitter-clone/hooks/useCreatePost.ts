@@ -30,7 +30,7 @@ export const useCreatePost = () => {
         } as any);
       }
 
-      return api.post("/post", formData, {
+      return api.post("/api/posts", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
     },
