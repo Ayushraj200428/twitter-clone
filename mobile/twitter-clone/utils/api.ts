@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuth } from "@clerk/clerk-expo";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5001/api";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://twitter-clone-sooty-rho-61.vercel.app/";
 
 export const createApiClient = (getToken: () => Promise<string | null>): AxiosInstance => {
   const api = axios.create({ baseURL: API_BASE_URL });
@@ -23,21 +23,21 @@ export const useApiClient = (): AxiosInstance => {
 };
 
 export const userApi = {
-  syncUser: (api: AxiosInstance) => api.post("/user/sync"),
-  getCurrentUser: (api: AxiosInstance) => api.post("/user/me"),
-  updateProfile: (api: AxiosInstance, data: any) => api.put("/user/profile", data),
+  syncUser: (api: AxiosInstance) => api.post("/api/users/sync"),
+  getCurrentUser: (api: AxiosInstance) => api.post("/api/users/me"),
+  updateProfile: (api: AxiosInstance, data: any) => api.put("/api/users/profile", data),
 };
 
 export const postApi = {
   createPost: (api: AxiosInstance, data: { content: string; image?: string }) =>
-    api.post("/post", data),
-  getPosts: (api: AxiosInstance) => api.get("/post"),
-  getUserPosts: (api: AxiosInstance, username: string) => api.get(`/post/user/${username}`),
-  likePost: (api: AxiosInstance, postId: string) => api.post(`/post/${postId}/like`),
-  deletePost: (api: AxiosInstance, postId: string) => api.delete(`/post/${postId}`),
+    api.post("/api/posts", data),
+  getPosts: (api: AxiosInstance) => api.get("/api/posts"),
+  getUserPosts: (api: AxiosInstance, username: string) => api.get(`/api/posts/user/${username}`),
+  likePost: (api: AxiosInstance, postId: string) => api.post(`/api/posts/${postId}/like`),
+  deletePost: (api: AxiosInstance, postId: string) => api.delete(`/api/posts/${postId}`),
 };
 
 export const commentApi = {
   createComment: (api: AxiosInstance, postId: string, content: string) =>
-    api.post(`/comments/post/${postId}`, { content }),
+    api.post(`/api/comments/post/${postId}`, { content }),
 };
