@@ -3,16 +3,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import * as ImageManipulator from "expo-image-manipulator";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useApiClient } from "../utils/api";
 
 const compressImage = async (uri: string): Promise<string> => {
-  // Step 1: resize to max 1024px wide and compress to 70% quality
-  const result = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: 1024 } }],
-    { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
-  );
+  const ctx = ImageManipulator.manipulate(uri);
+  ctx.resize({ width: 1024 });
+  const img = await ctx.renderAsync();
+  const result = await img.saveAsync({ compress: 0.6, format: SaveFormat.JPEG });
   return result.uri;
 };
 
@@ -29,7 +27,6 @@ export const useCreatePost = () => {
       if (postData.imageUri) {
         // Compress the image before encoding to stay under Vercel's 4.5MB body limit
         const compressedUri = await compressImage(postData.imageUri);
-
         const base64 = await FileSystem.readAsStringAsync(compressedUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
