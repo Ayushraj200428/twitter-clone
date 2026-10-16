@@ -27,8 +27,18 @@ export const usePosts = (username?: string) => {
     },
   });
 
-  const checkIsLiked = (postLikes: string[], currentUser: any) =>
-    currentUser ? postLikes.some((id) => id.toString() === currentUser._id.toString()) : false;
+  // likes array can contain either ObjectId objects or plain id strings
+  const checkIsLiked = (postLikes: any[], currentUser: any): boolean => {
+    if (!currentUser || !postLikes?.length) return false;
+    const userId = currentUser._id.toString();
+    return postLikes.some((like) => {
+      // like can be a populated User object or a raw id string/ObjectId
+      const likeId = typeof like === "object" && like !== null
+        ? (like._id ?? like).toString()
+        : like.toString();
+      return likeId === userId;
+    });
+  };
 
   return {
     posts: postsData || [],

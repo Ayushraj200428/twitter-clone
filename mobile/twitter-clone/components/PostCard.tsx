@@ -1,7 +1,7 @@
 import { Post, User } from "../types";
 import { formatDate, formatNumber } from "../utils/formatters";
 import { AntDesign, Feather } from "@expo/vector-icons";
-import { View, Text, Alert, Image, TouchableOpacity } from "react-native";
+import { View, Text, Alert, Image, TouchableOpacity, Share } from "react-native";
 
 interface PostCardProps {
   post: Post;
@@ -13,7 +13,10 @@ interface PostCardProps {
 }
 
 const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: PostCardProps) => {
-  const isOwnPost = currentUser ? post.user._id === currentUser._id : false;
+  // Compare using string form to handle both ObjectId objects and plain strings
+  const isOwnPost = currentUser
+    ? post.user._id.toString() === currentUser._id.toString()
+    : false;
 
   const handleDelete = () => {
     Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
@@ -26,6 +29,32 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
     ]);
   };
 
+  const handleRetweet = () => {
+    Alert.alert(
+      "Retweet",
+      "Retweet this post?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Retweet",
+          onPress: () =>
+            Alert.alert("Retweeted!", "Post has been retweeted to your followers."),
+        },
+      ]
+    );
+  };
+
+  const handleShare = async () => {
+    try {
+      const message = post.content
+        ? `"${post.content}" — @${post.user.username}`
+        : `Check out this post by @${post.user.username}`;
+      await Share.share({ message });
+    } catch {
+      // user dismissed share sheet — no action needed
+    }
+  };
+
   return (
     <View className="border-b border-gray-100 bg-white">
       <View className="flex-row p-4">
@@ -36,59 +65,78 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
 
         <View className="flex-1">
           <View className="flex-row items-center justify-between mb-1">
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 flex-wrap">
               <Text className="font-bold text-gray-900 mr-1">
                 {post.user.firstName} {post.user.lastName}
               </Text>
-              <Text className="text-gray-500 ml-1">
+              <Text className="text-gray-500 ml-1" numberOfLines={1}>
                 @{post.user.username} · {formatDate(post.createdAt)}
               </Text>
             </View>
             {isOwnPost && (
-              <TouchableOpacity onPress={handleDelete}>
-                <Feather name="trash" size={20} color="#657786" />
+              <TouchableOpacity onPress={handleDelete} className="ml-2">
+                <Feather name="trash-2" size={18} color="#657786" />
               </TouchableOpacity>
             )}
           </View>
 
-          {post.content && (
+          {post.content ? (
             <Text className="text-gray-900 text-base leading-5 mb-3">{post.content}</Text>
-          )}
+          ) : null}
 
-          {post.image && (
+          {post.image ? (
             <Image
               source={{ uri: post.image }}
               className="w-full h-48 rounded-2xl mb-3"
               resizeMode="cover"
             />
-          )}
+          ) : null}
 
-          <View className="flex-row justify-between max-w-xs">
-            <TouchableOpacity className="flex-row items-center" onPress={() => onComment(post)}>
+          {/* Action buttons */}
+          <View className="flex-row justify-between max-w-xs mt-1">
+            {/* Comment */}
+            <TouchableOpacity
+              className="flex-row items-center"
+              onPress={() => onComment(post)}
+              activeOpacity={0.7}
+            >
               <Feather name="message-circle" size={18} color="#657786" />
               <Text className="text-gray-500 text-sm ml-2">
                 {formatNumber(post.comments?.length || 0)}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="flex-row items-center">
+            {/* Retweet */}
+            <TouchableOpacity
+              className="flex-row items-center"
+              onPress={handleRetweet}
+              activeOpacity={0.7}
+            >
               <Feather name="repeat" size={18} color="#657786" />
               <Text className="text-gray-500 text-sm ml-2">0</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="flex-row items-center" onPress={() => onLike(post._id)}>
+            {/* Like */}
+            <TouchableOpacity
+              className="flex-row items-center"
+              onPress={() => onLike(post._id)}
+              activeOpacity={0.7}
+            >
               {isLiked ? (
                 <AntDesign name="heart" size={18} color="#E0245E" />
               ) : (
-                <Feather name="heart" size={18} color="#657786" />
+                <AntDesign name="hearto" size={18} color="#657786" />
               )}
-
-              <Text className={`text-sm ml-2 ${isLiked ? "text-red-500" : "text-gray-500"}`}>
+              <Text
+                style={{ color: isLiked ? "#E0245E" : "#657786" }}
+                className="text-sm ml-2"
+              >
                 {formatNumber(post.likes?.length || 0)}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity>
+            {/* Share */}
+            <TouchableOpacity onPress={handleShare} activeOpacity={0.7}>
               <Feather name="share" size={18} color="#657786" />
             </TouchableOpacity>
           </View>
