@@ -6,30 +6,13 @@ import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useApiClient } from "../utils/api";
 
-// Max base64 size we'll send — Vercel has a 4.5MB body limit
-// base64 adds ~33% overhead, so keep source image under ~3MB
-const MAX_BASE64_BYTES = 3 * 1024 * 1024; // 3MB
-
 const compressImage = async (uri: string): Promise<string> => {
   // Step 1: resize to max 1024px wide and compress to 70% quality
-  let result = await ImageManipulator.manipulateAsync(
+  const result = await ImageManipulator.manipulateAsync(
     uri,
     [{ resize: { width: 1024 } }],
-    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+    { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
   );
-
-  // Step 2: check size — if still too large, compress more aggressively
-  const info = await FileSystem.getInfoAsync(result.uri, { size: true });
-  const size = info.exists && !info.isDirectory ? (info.size ?? 0) : 0;
-
-  if (size > MAX_BASE64_BYTES) {
-    result = await ImageManipulator.manipulateAsync(
-      result.uri,
-      [{ resize: { width: 800 } }],
-      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
-    );
-  }
-
   return result.uri;
 };
 
