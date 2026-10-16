@@ -72,41 +72,67 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
   res.status(200).json({ user });
 });
 
+export const searchUsers = asyncHandler(async (req, res) => {
+  const { q } = req.query;
+
+  if (!q || q.trim() === "") {
+    return res.status(200).json({ users: [] });
+  }
+
+  const regex = new RegExp(q.trim(), "i");
+  const users = await User.find({
+    $or: [
+      { username: { $regex: regex } },
+      { firstName: { $regex: regex } },
+      { lastName: { $regex: regex } },
+    ],
+  })
+    .select("username firstName lastName profilePicture bio followers following")
+    .limit(20);
+
+  res.status(200).json({ users });
+});
+
 
 export const followUser = asyncHandler(async (req, res) => {
   const { userId } = getAuth(req);
   const { targetUserId } = req.params;
-
-  if (userId === targetUserId) return res.status(400).json({ error: "You cannot follow yourself" });
 
   const currentUser = await User.findOne({ clerkId: userId });
   const targetUser = await User.findById(targetUserId);
 
   if (!currentUser || !targetUser) return res.status(404).json({ error: "User not found" });
 
-  const isFollowing = currentUser.following.includes(targetUserId);
+  // prevent self-follow using MongoDB _id comparison
+  if (currentUser._id.toString() === targetUser._id.toString()) {
+    return res.status(400).json({ error: "You cannot follow yourself" });
+  }
+
+  const isFollowing = currentUser.following.some(
+    (id) => id.toString() === targetUser._id.toString()
+  );
 
   if (isFollowing) {
     // unfollow
     await User.findByIdAndUpdate(currentUser._id, {
-      $pull: { following: targetUserId },
+      $pull: { following: targetUser._id },
     });
-    await User.findByIdAndUpdate(targetUserId, {
+    await User.findByIdAndUpdate(targetUser._id, {
       $pull: { followers: currentUser._id },
     });
   } else {
     // follow
     await User.findByIdAndUpdate(currentUser._id, {
-      $push: { following: targetUserId },
+      $push: { following: targetUser._id },
     });
-    await User.findByIdAndUpdate(targetUserId, {
+    await User.findByIdAndUpdate(targetUser._id, {
       $push: { followers: currentUser._id },
     });
 
     // create notification
     await Notification.create({
       from: currentUser._id,
-      to: targetUserId,
+      to: targetUser._id,
       type: "follow",
     });
   }

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiClient } from "@/utils/api";
+import { useApiClient, notificationApi } from "../utils/api";
 
 export const useNotifications = () => {
   const api = useApiClient();
@@ -7,12 +7,12 @@ export const useNotifications = () => {
 
   const { data: notificationsData, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => api.get("/api/notifications"),
+    queryFn: () => notificationApi.getNotifications(api),
     select: (res) => res.data.notifications,
   });
 
   const deleteNotificationMutation = useMutation({
-    mutationFn: (notificationId: string) => api.delete(`/api/notifications/${notificationId}`),
+    mutationFn: (notificationId: string) => notificationApi.deleteNotification(api, notificationId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 

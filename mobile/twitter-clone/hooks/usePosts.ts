@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiClient, postApi } from "@/utils/api";
+import { useApiClient, postApi } from "../utils/api";
 
 export const usePosts = (username?: string) => {
   const api = useApiClient();
   const queryClient = useQueryClient();
 
-  const { data: postsData, isLoading, error, refetch } = useQuery({
+  const { data: postsData, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: username ? ["userPosts", username] : ["posts"],
     queryFn: () => (username ? postApi.getUserPosts(api, username) : postApi.getPosts(api)),
     select: (response) => response.data.posts,
@@ -28,11 +28,12 @@ export const usePosts = (username?: string) => {
   });
 
   const checkIsLiked = (postLikes: string[], currentUser: any) =>
-    currentUser && postLikes.includes(currentUser._id);
+    currentUser ? postLikes.some((id) => id.toString() === currentUser._id.toString()) : false;
 
   return {
     posts: postsData || [],
     isLoading,
+    isRefetching,
     error,
     refetch,
     toggleLike: (postId: string) => likePostMutation.mutate(postId),

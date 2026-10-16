@@ -1,6 +1,7 @@
 import { useComments } from "../hooks/useComments";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { Post } from "../types";
+import { Feather } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -18,7 +19,8 @@ interface CommentsModalProps {
 }
 
 const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
-  const { commentText, setCommentText, createComment, isCreatingComment } = useComments();
+  const { commentText, setCommentText, createComment, deleteComment, isCreatingComment } =
+    useComments();
   const { currentUser } = useCurrentUser();
 
   const handleClose = () => {
@@ -46,7 +48,6 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
                 source={{ uri: selectedPost.user.profilePicture }}
                 className="size-12 rounded-full mr-3"
               />
-
               <View className="flex-1">
                 <View className="flex-row items-center mb-1">
                   <Text className="font-bold text-gray-900 mr-1">
@@ -54,13 +55,11 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
                   </Text>
                   <Text className="text-gray-500 ml-1">@{selectedPost.user.username}</Text>
                 </View>
-
                 {selectedPost.content && (
                   <Text className="text-gray-900 text-base leading-5 mb-3">
                     {selectedPost.content}
                   </Text>
                 )}
-
                 {selectedPost.image && (
                   <Image
                     source={{ uri: selectedPost.image }}
@@ -73,37 +72,56 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
           </View>
 
           {/* COMMENTS LIST */}
-          {selectedPost.comments.map((comment) => (
-            <View key={comment._id} className="border-b border-gray-100 bg-white p-4">
-              <View className="flex-row">
-                <Image
-                  source={{ uri: comment.user.profilePicture }}
-                  className="w-10 h-10 rounded-full mr-3"
-                />
-
-                <View className="flex-1">
-                  <View className="flex-row items-center mb-1">
-                    <Text className="font-bold text-gray-900 mr-1">
-                      {comment.user.firstName} {comment.user.lastName}
-                    </Text>
-                    <Text className="text-gray-500 text-sm ml-1">@{comment.user.username}</Text>
-                  </View>
-
-                  <Text className="text-gray-900 text-base leading-5 mb-2">{comment.content}</Text>
-                </View>
-              </View>
+          {selectedPost.comments.length === 0 ? (
+            <View className="p-8 items-center">
+              <Text className="text-gray-400">No comments yet. Be the first!</Text>
             </View>
-          ))}
+          ) : (
+            selectedPost.comments.map((comment) => {
+              const isOwnComment = currentUser?._id === comment.user._id;
+              return (
+                <View key={comment._id} className="border-b border-gray-100 bg-white p-4">
+                  <View className="flex-row">
+                    <Image
+                      source={{ uri: comment.user.profilePicture }}
+                      className="w-10 h-10 rounded-full mr-3"
+                    />
+                    <View className="flex-1">
+                      <View className="flex-row items-center justify-between mb-1">
+                        <View className="flex-row items-center flex-1">
+                          <Text className="font-bold text-gray-900 mr-1">
+                            {comment.user.firstName} {comment.user.lastName}
+                          </Text>
+                          <Text className="text-gray-500 text-sm ml-1">
+                            @{comment.user.username}
+                          </Text>
+                        </View>
+                        {isOwnComment && (
+                          <TouchableOpacity
+                            onPress={() => deleteComment(comment._id)}
+                            className="ml-2 p-1"
+                          >
+                            <Feather name="trash" size={16} color="#657786" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Text className="text-gray-900 text-base leading-5 mb-2">
+                        {comment.content}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          )}
 
           {/* ADD COMMENT INPUT */}
-
           <View className="p-4 border-t border-gray-100">
             <View className="flex-row">
               <Image
                 source={{ uri: currentUser?.profilePicture }}
                 className="size-10 rounded-full mr-3"
               />
-
               <View className="flex-1">
                 <TextInput
                   className="border border-gray-200 rounded-lg p-3 text-base mb-3"
@@ -114,7 +132,6 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
                   numberOfLines={3}
                   textAlignVertical="top"
                 />
-
                 <TouchableOpacity
                   className={`px-4 py-2 rounded-lg self-start ${
                     commentText.trim() ? "bg-blue-500" : "bg-gray-300"
@@ -123,7 +140,7 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
                   disabled={isCreatingComment || !commentText.trim()}
                 >
                   {isCreatingComment ? (
-                    <ActivityIndicator size={"small"} color={"white"} />
+                    <ActivityIndicator size="small" color="white" />
                   ) : (
                     <Text
                       className={`font-semibold ${
