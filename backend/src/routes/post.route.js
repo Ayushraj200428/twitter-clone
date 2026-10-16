@@ -16,7 +16,7 @@ router.get("/", getPosts);
 router.get("/user/:username", getUserPosts);
 router.get("/:postId", getPost);
 
-router.post("/", protectRoute, upload.single("image"), createPost);
+router.post("/", protectRoute, createPost);
 router.post("/:postId/like", protectRoute, likePost);
 router.delete("/:postId", protectRoute, deletePost);
 

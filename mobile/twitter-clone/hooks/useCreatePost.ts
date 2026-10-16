@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { useApiClient } from "../utils/api";
 
 export const useCreatePost = () => {
@@ -12,26 +13,30 @@ export const useCreatePost = () => {
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: { content: string; imageUri?: string }) => {
-      const formData = new FormData();
-      if (postData.content) formData.append("content", postData.content);
+      let imageBase64: string | undefined;
 
       if (postData.imageUri) {
-        const uriParts = postData.imageUri.split(".");
-        const fileType = uriParts[uriParts.length - 1].toLowerCase();
+        // Strip query string before extracting extension (iOS URIs can have ?params)
+        const cleanUri = postData.imageUri.split("?")[0];
+        const ext = cleanUri.split(".").pop()?.toLowerCase() ?? "jpg";
         const mimeTypeMap: Record<string, string> = {
           png: "image/png",
           gif: "image/gif",
           webp: "image/webp",
         };
-        formData.append("image", {
-          uri: postData.imageUri,
-          name: `image.${fileType}`,
-          type: mimeTypeMap[fileType] || "image/jpeg",
-        } as any);
+        const mimeType = mimeTypeMap[ext] ?? "image/jpeg";
+
+        // Read the file as base64 and build a data URI
+        const base64 = await FileSystem.readAsStringAsync(postData.imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        imageBase64 = `data:${mimeType};base64,${base64}`;
       }
 
-      return api.post("/api/posts", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Send as JSON — avoids Vercel's multipart/form-data body size limitations
+      return api.post("/api/posts", {
+        content: postData.content,
+        ...(imageBase64 ? { imageBase64 } : {}),
       });
     },
     onSuccess: () => {

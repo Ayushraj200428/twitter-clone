@@ -65,10 +65,9 @@ export const getUserPosts = asyncHandler(async (req, res) => {
 
 export const createPost = asyncHandler(async (req, res) => {
   const { userId } = getAuth(req);
-  const { content } = req.body;
-  const imageFile = req.file;
+  const { content, imageBase64 } = req.body;
 
-  if (!content && !imageFile) {
+  if (!content && !imageBase64) {
     return res.status(400).json({ error: "Post must contain either text or image" });
   }
 
@@ -77,15 +76,9 @@ export const createPost = asyncHandler(async (req, res) => {
 
   let imageUrl = "";
 
- 
-  if (imageFile) {
+  if (imageBase64) {
     try {
-      
-      const base64Image = `data:${imageFile.mimetype};base64,${imageFile.buffer.toString(
-        "base64"
-      )}`;
-
-      const uploadResponse = await cloudinary.uploader.upload(base64Image, {
+      const uploadResponse = await cloudinary.uploader.upload(imageBase64, {
         folder: "social_media_posts",
         resource_type: "image",
         transformation: [
