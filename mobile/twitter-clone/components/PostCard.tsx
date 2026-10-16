@@ -29,21 +29,6 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
     ]);
   };
 
-  const handleRetweet = () => {
-    Alert.alert(
-      "Retweet",
-      "Retweet this post?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Retweet",
-          onPress: () =>
-            Alert.alert("Retweeted!", "Post has been retweeted to your followers."),
-        },
-      ]
-    );
-  };
-
   const handleShare = async () => {
     try {
       const message = post.content
@@ -104,16 +89,6 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
               <Text className="text-gray-500 text-sm ml-2">
                 {formatNumber(post.comments?.length || 0)}
               </Text>
-            </TouchableOpacity>
-
-            {/* Retweet */}
-            <TouchableOpacity
-              className="flex-row items-center"
-              onPress={handleRetweet}
-              activeOpacity={0.7}
-            >
-              <Feather name="repeat" size={18} color="#657786" />
-              <Text className="text-gray-500 text-sm ml-2">0</Text>
             </TouchableOpacity>
 
             {/* Like */}
