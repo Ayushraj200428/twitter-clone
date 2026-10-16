@@ -78,7 +78,7 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
             </View>
           ) : (
             selectedPost.comments.map((comment) => {
-              const isOwnComment = currentUser?._id === comment.user._id;
+              const isOwnComment = currentUser?._id?.toString() === comment.user._id?.toString();
               return (
                 <View key={comment._id} className="border-b border-gray-100 bg-white p-4">
                   <View className="flex-row">
