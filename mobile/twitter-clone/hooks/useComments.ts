@@ -35,8 +35,12 @@ export const useComments = () => {
     onSuccess: () => {
       invalidatePosts();
     },
-    onError: () => {
-      Alert.alert("Error", "Failed to delete comment. Try again.");
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to delete comment. Try again.";
+      Alert.alert("Error", message);
     },
   });
 
