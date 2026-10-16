@@ -9,13 +9,12 @@ export const aj = arcjet({
     // shield protects your app from common attacks e.g. SQL injection, XSS, CSRF attacks
     shield({ mode: "LIVE" }),
 
-    // bot detection - block all bots except search engines
+    // bot detection - DRY_RUN so mobile app clients are not incorrectly blocked
+    // React Native / Expo axios requests don't have browser User-Agents
     detectBot({
-      mode: "LIVE",
+      mode: "DRY_RUN",
       allow: [
         "CATEGORY:SEARCH_ENGINE",
-        // allow legitimate search engine bots
-        // see full list at https://arcjet.com/bot-list
       ],
     }),
 
@@ -23,8 +22,8 @@ export const aj = arcjet({
     tokenBucket({
       mode: "LIVE",
       refillRate: 10, // tokens added per interval
-      interval: 10, // interval in seconds (10 seconds)
-      capacity: 15, // maximum tokens in bucket
+      interval: 10,  // interval in seconds
+      capacity: 15,  // maximum tokens in bucket
     }),
   ],
 });
