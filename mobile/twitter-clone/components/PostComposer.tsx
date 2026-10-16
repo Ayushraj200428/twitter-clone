@@ -9,8 +9,6 @@ const PostComposer = () => {
     setContent,
     selectedImage,
     isCreating,
-    pickImageFromGallery,
-    takePhoto,
     removeImage,
     createPost,
   } = useCreatePost();
@@ -52,16 +50,7 @@ const PostComposer = () => {
         </View>
       )}
 
-      <View className="flex-row justify-between items-center mt-3">
-        <View className="flex-row">
-          <TouchableOpacity className="mr-4" onPress={pickImageFromGallery}>
-            <Feather name="image" size={20} color="#1DA1F2" />
-          </TouchableOpacity>
-          <TouchableOpacity className="mr-4" onPress={takePhoto}>
-            <Feather name="camera" size={20} color="#1DA1F2" />
-          </TouchableOpacity>
-        </View>
-
+      <View className="flex-row justify-end items-center mt-3">
         <View className="flex-row items-center">
           {content.length > 0 && (
             <Text
