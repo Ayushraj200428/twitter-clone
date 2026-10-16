@@ -20,7 +20,7 @@ const compressImage = async (uri: string): Promise<string> => {
 
   // Step 2: check size — if still too large, compress more aggressively
   const info = await FileSystem.getInfoAsync(result.uri, { size: true });
-  const size = (info as any).size ?? 0;
+  const size = info.exists && !info.isDirectory ? (info.size ?? 0) : 0;
 
   if (size > MAX_BASE64_BYTES) {
     result = await ImageManipulator.manipulateAsync(
