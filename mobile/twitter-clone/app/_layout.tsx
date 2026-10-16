@@ -5,7 +5,17 @@ import { Stack } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000 * 30, // 30 seconds
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 export default function RootLayout() {
   return (
