@@ -1,4 +1,9 @@
+/// <reference types="nativewind/types" />
 import "react-native";
+
+declare module "*.css";
+declare module "../global.css";
+declare module "@/global.css";
 
 declare module "react-native" {
   interface ViewProps {

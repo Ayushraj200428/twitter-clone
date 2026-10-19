@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import asyncHandler from "express-async-handler";
 import { getAuth } from "@clerk/express";
 import Notification from "../models/notification.model.js";
@@ -21,6 +22,10 @@ export const getNotifications = asyncHandler(async (req, res) => {
 export const deleteNotification = asyncHandler(async (req, res) => {
   const { userId } = getAuth(req);
   const { notificationId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(notificationId)) {
+    return res.status(400).json({ error: "Invalid notification ID" });
+  }
 
   const user = await User.findOne({ clerkId: userId });
   if (!user) return res.status(404).json({ error: "User not found" });

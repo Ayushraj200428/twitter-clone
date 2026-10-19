@@ -1,7 +1,16 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuth } from "@clerk/clerk-expo";
+import { Platform } from "react-native";
 
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || "https://twitter-clone-sooty-rho-61.vercel.app").replace(/\/$/, "");
+const getApiBaseUrl = (): string => {
+  let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5001";
+  if (Platform.OS === "android" && url.includes("localhost")) {
+    url = url.replace("localhost", "10.0.2.2");
+  }
+  return url.replace(/\/$/, "");
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const createApiClient = (getToken: () => Promise<string | null>): AxiosInstance => {
   const api = axios.create({

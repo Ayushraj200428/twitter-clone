@@ -5,6 +5,7 @@ import {protectRoute} from "../middleware/auth.middleware.js"
 const router = express.Router()
 router.get("/profile/:username", getUserProfile)
 router.get("/me", protectRoute, getCurrentUser)
+router.post("/me", protectRoute, getCurrentUser)
 router.get("/search", protectRoute, searchUsers)
 router.post("/sync", protectRoute, syncUser)
 router.put("/profile", protectRoute, updateProfile)

@@ -1,3 +1,4 @@
+import { ENV } from "./config/env.js";
 import express from "express";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
@@ -7,7 +8,6 @@ import postRoutes from "./routes/post.route.js";
 import commentRoutes from "./routes/comment.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 
-import { ENV } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import { arcjetMiddleware } from "./middleware/arcjet.middleware.js";
 
@@ -29,7 +29,17 @@ app.use("/api/notifications", notificationRoutes);
 // error handling middleware
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
-  res.status(500).json({ error: err.message || "Internal server error" });
+
+  if (err.name === "CastError") {
+    return res.status(400).json({ error: `Invalid ${err.path || "ID"}` });
+  }
+
+  if (err.name === "ValidationError") {
+    const messages = Object.values(err.errors).map((e) => e.message);
+    return res.status(400).json({ error: messages.join(", ") });
+  }
+
+  res.status(err.status || 500).json({ error: err.message || "Internal server error" });
 });
 
 const startServer = async () => {

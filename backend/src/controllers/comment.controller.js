@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import asyncHandler from "express-async-handler";
 import { getAuth } from "@clerk/express";
 import Comment from "../models/comment.model.js";
@@ -7,6 +8,10 @@ import Notification from "../models/notification.model.js";
 
 export const getComments = asyncHandler(async (req, res) => {
   const { postId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    return res.status(400).json({ error: "Invalid post ID" });
+  }
 
   const comments = await Comment.find({ post: postId })
     .sort({ createdAt: -1 })
@@ -20,8 +25,17 @@ export const createComment = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const { content } = req.body;
 
-  if (!content || content.trim() === "") {
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    return res.status(400).json({ error: "Invalid post ID" });
+  }
+
+  const trimmedContent = content ? content.trim() : "";
+  if (!trimmedContent) {
     return res.status(400).json({ error: "Comment content is required" });
+  }
+
+  if (trimmedContent.length > 280) {
+    return res.status(400).json({ error: "Comment cannot exceed 280 characters" });
   }
 
   const user = await User.findOne({ clerkId: userId });
@@ -32,7 +46,7 @@ export const createComment = asyncHandler(async (req, res) => {
   const comment = await Comment.create({
     user: user._id,
     post: postId,
-    content,
+    content: trimmedContent,
   });
 
   // link the comment to the post
@@ -51,12 +65,18 @@ export const createComment = asyncHandler(async (req, res) => {
     });
   }
 
+  await comment.populate("user", "username firstName lastName profilePicture");
+
   res.status(201).json({ comment });
 });
 
 export const deleteComment = asyncHandler(async (req, res) => {
   const { userId } = getAuth(req);
   const { commentId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(commentId)) {
+    return res.status(400).json({ error: "Invalid comment ID" });
+  }
 
   const user = await User.findOne({ clerkId: userId });
   const comment = await Comment.findById(commentId);
@@ -65,8 +85,12 @@ export const deleteComment = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "User or comment not found" });
   }
 
-  if (comment.user.toString() !== user._id.toString()) {
-    return res.status(403).json({ error: "You can only delete your own comments" });
+  const post = await Post.findById(comment.post);
+  const isCommentAuthor = comment.user.toString() === user._id.toString();
+  const isPostAuthor = post && post.user.toString() === user._id.toString();
+
+  if (!isCommentAuthor && !isPostAuthor) {
+    return res.status(403).json({ error: "You can only delete your own comments or comments on your posts" });
   }
 
   // remove comment from post
@@ -74,8 +98,9 @@ export const deleteComment = asyncHandler(async (req, res) => {
     $pull: { comments: commentId },
   });
 
-  // delete the comment
+  // delete the comment and associated notifications
   await Comment.findByIdAndDelete(commentId);
+  await Notification.deleteMany({ comment: commentId });
 
   res.status(200).json({ message: "Comment deleted successfully" });
-});
+});
