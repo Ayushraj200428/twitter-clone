@@ -18,7 +18,7 @@
   "functions": {
     "src/server.js": {
       "maxDuration": 30,
-      "memory": 512
+      "memory": 1024
     }
   }
 }
