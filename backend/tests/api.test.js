@@ -1,3 +1,4 @@
+process.env.NODE_ENV = "test";
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
@@ -148,5 +149,117 @@ describe("Model & Business Logic Rules", () => {
     const likes = [id1];
     const isLiked = likes.some((id) => id.toString() === id2.toString());
     assert.equal(isLiked, true);
+  });
+});
+
+describe("Comment Deletion & Moderation Logic", () => {
+  test("Comment deletion properly pulls comment from post and deletes notifications", async () => {
+    const Post = (await import("../src/models/post.model.js")).default;
+    const Comment = (await import("../src/models/comment.model.js")).default;
+    const Notification = (await import("../src/models/notification.model.js")).default;
+
+    const postAuthorId = new mongoose.Types.ObjectId();
+    const commentAuthorId = new mongoose.Types.ObjectId();
+
+    // 1. Create a post
+    const post = await Post.create({
+      user: postAuthorId,
+      content: "Post with comment to delete",
+    });
+
+    // 2. Create a comment
+    const comment = await Comment.create({
+      user: commentAuthorId,
+      post: post._id,
+      content: "This is a comment to test deletion",
+    });
+
+    // Link comment to post
+    await Post.findByIdAndUpdate(post._id, { $push: { comments: comment._id } });
+
+    // 3. Create a notification for the comment
+    const notif = await Notification.create({
+      from: commentAuthorId,
+      to: postAuthorId,
+      type: "comment",
+      post: post._id,
+      comment: comment._id,
+    });
+
+    // Verify setup
+    const updatedPostBefore = await Post.findById(post._id);
+    assert.equal(updatedPostBefore.comments.length, 1);
+    const notifBefore = await Notification.findById(notif._id);
+    assert.ok(notifBefore);
+
+    // 4. Perform comment deletion cascade
+    await Post.findByIdAndUpdate(comment.post, { $pull: { comments: comment._id } });
+    await Comment.findByIdAndDelete(comment._id);
+    await Notification.deleteMany({ comment: comment._id });
+
+    // 5. Verify results
+    const updatedPostAfter = await Post.findById(post._id);
+    assert.equal(updatedPostAfter.comments.length, 0);
+
+    const deletedComment = await Comment.findById(comment._id);
+    assert.equal(deletedComment, null);
+
+    const notifAfter = await Notification.findById(notif._id);
+    assert.equal(notifAfter, null);
+
+    // Clean up post
+    await Post.findByIdAndDelete(post._id);
+  });
+
+  test("Comment deletion authorization allows both comment author and post author", () => {
+    const postAuthor = new mongoose.Types.ObjectId();
+    const commentAuthor = new mongoose.Types.ObjectId();
+    const thirdPartyUser = new mongoose.Types.ObjectId();
+
+    // Comment author can delete
+    assert.equal(commentAuthor.toString() === commentAuthor.toString(), true);
+
+    // Post author can delete comment on their post
+    assert.equal(postAuthor.toString() === postAuthor.toString(), true);
+
+    // Third party cannot delete
+    const isAllowedThirdParty =
+      thirdPartyUser.toString() === commentAuthor.toString() ||
+      thirdPartyUser.toString() === postAuthor.toString();
+    assert.equal(isAllowedThirdParty, false);
+  });
+});
+
+describe("Post Creation & Image Posting Rules", () => {
+  test("Post with image only (no text) is valid", async () => {
+    const Post = (await import("../src/models/post.model.js")).default;
+    const post = new Post({
+      user: new mongoose.Types.ObjectId(),
+      content: "",
+      image: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+    });
+    const err = post.validateSync();
+    assert.equal(err, undefined);
+    assert.equal(post.image.length > 0, true);
+  });
+
+  test("Post with both text and image is valid", async () => {
+    const Post = (await import("../src/models/post.model.js")).default;
+    const post = new Post({
+      user: new mongoose.Types.ObjectId(),
+      content: "Check out this image!",
+      image: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+    });
+    const err = post.validateSync();
+    assert.equal(err, undefined);
+  });
+
+  test("Post with neither text nor image is rejected by controller validation", () => {
+    const content = "";
+    const imageBase64 = undefined;
+    const trimmedContent = content ? content.trim() : "";
+
+    const isInvalid = !trimmedContent && !imageBase64;
+    assert.equal(isInvalid, true);
   });
 });

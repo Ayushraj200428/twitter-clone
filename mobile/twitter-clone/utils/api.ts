@@ -58,6 +58,8 @@ export const postApi = {
 };
 
 export const commentApi = {
+  getComments: (api: AxiosInstance, postId: string) =>
+    api.get(`/api/comments/post/${postId}`),
   createComment: (api: AxiosInstance, postId: string, content: string) =>
     api.post(`/api/comments/post/${postId}`, { content }),
   deleteComment: (api: AxiosInstance, commentId: string) =>

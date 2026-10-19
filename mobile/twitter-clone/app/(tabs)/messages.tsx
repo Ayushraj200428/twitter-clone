@@ -1,4 +1,4 @@
-import { CONVERSATIONS, ConversationType } from "../../data/conversations";
+import { CONVERSATIONS, ConversationType, MessageType } from "../../data/conversations";
 import { useState } from "react";
 import {
   View,
@@ -45,15 +45,40 @@ const MessagesScreen = () => {
 
   const sendMessage = () => {
     if (newMessage.trim() && selectedConversation) {
+      const text = newMessage.trim();
+      const message: MessageType = {
+        id: Date.now(),
+        text,
+        fromUser: true,
+        timestamp: new Date(),
+        time: "now",
+      };
+
+      setSelectedConversation((prev) =>
+        prev
+          ? {
+              ...prev,
+              lastMessage: text,
+              time: "now",
+              messages: [...prev.messages, message],
+            }
+          : null
+      );
+
       setConversationsList((prev) =>
         prev.map((conv) =>
           conv.id === selectedConversation.id
-            ? { ...conv, lastMessage: newMessage, time: "now" }
+            ? {
+                ...conv,
+                lastMessage: text,
+                time: "now",
+                messages: [...conv.messages, message],
+              }
             : conv
         )
       );
+
       setNewMessage("");
-      Alert.alert("Message Sent!", `Sent to ${selectedConversation.user.name}`);
     }
   };
 

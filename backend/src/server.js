@@ -56,7 +56,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}
 
 // export for vercel - v2
 export default app;

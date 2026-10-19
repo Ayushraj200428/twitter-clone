@@ -14,9 +14,10 @@ interface PostCardProps {
 
 const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: PostCardProps) => {
   // Compare using string form to handle both ObjectId objects and plain strings
-  const isOwnPost = currentUser
-    ? post.user._id.toString() === currentUser._id.toString()
-    : false;
+  const isOwnPost =
+    currentUser && post.user?._id
+      ? post.user._id.toString() === currentUser._id.toString()
+      : false;
 
   const handleDelete = () => {
     Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
@@ -31,9 +32,10 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
 
   const handleShare = async () => {
     try {
+      const username = post.user?.username || "user";
       const message = post.content
-        ? `"${post.content}" — @${post.user.username}`
-        : `Check out this post by @${post.user.username}`;
+        ? `"${post.content}" — @${username}`
+        : `Check out this post by @${username}`;
       await Share.share({ message });
     } catch {
       // user dismissed share sheet — no action needed
@@ -44,7 +46,11 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
     <View className="border-b border-gray-100 bg-white">
       <View className="flex-row p-4">
         <Image
-          source={{ uri: post.user.profilePicture || "" }}
+          source={{
+            uri:
+              post.user?.profilePicture ||
+              "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
+          }}
           className="w-12 h-12 rounded-full mr-3"
         />
 
@@ -52,10 +58,10 @@ const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: P
           <View className="flex-row items-center justify-between mb-1">
             <View className="flex-row items-center flex-1 flex-wrap">
               <Text className="font-bold text-gray-900 mr-1">
-                {post.user.firstName} {post.user.lastName}
+                {post.user ? `${post.user.firstName || ""} ${post.user.lastName || ""}`.trim() || "User" : "User"}
               </Text>
               <Text className="text-gray-500 ml-1" numberOfLines={1}>
-                @{post.user.username} · {formatDate(post.createdAt)}
+                @{post.user?.username || "user"} · {formatDate(post.createdAt)}
               </Text>
             </View>
             {isOwnPost && (

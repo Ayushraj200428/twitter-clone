@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApiClient, userApi } from "../../utils/api";
 import { User } from "../../types";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
@@ -25,15 +26,22 @@ const TRENDING_TOPICS = [
 const SearchScreen = () => {
   const [searchText, setSearchText] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const api = useApiClient();
+  const queryClient = useQueryClient();
   const { currentUser } = useCurrentUser();
 
   // Debounce the search query
-  const handleSearchChange = useCallback((text: string) => {
+  const handleSearchChange = (text: string) => {
     setSearchText(text);
-    const timer = setTimeout(() => setDebouncedQuery(text.trim()), 400);
-    return () => clearTimeout(timer);
-  }, []);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedQuery(text.trim());
+    }, 350);
+  };
 
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["searchUsers", debouncedQuery],
@@ -41,6 +49,24 @@ const SearchScreen = () => {
     select: (res) => res.data.users as User[],
     enabled: debouncedQuery.length > 0,
   });
+
+  const followMutation = useMutation({
+    mutationFn: (targetUserId: string) => userApi.followUser(api, targetUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+      queryClient.invalidateQueries({ queryKey: ["searchUsers"] });
+    },
+    onError: (err: any) => {
+      Alert.alert("Error", err?.response?.data?.error || "Failed to update follow status");
+    },
+  });
+
+  const isFollowingUser = (targetUserId: string) => {
+    if (!currentUser?.following) return false;
+    return currentUser.following.some(
+      (id: any) => (id?._id ? id._id.toString() : id.toString()) === targetUserId.toString()
+    );
+  };
 
   const showResults = debouncedQuery.length > 0;
 
@@ -62,6 +88,7 @@ const SearchScreen = () => {
           {searchText.length > 0 && (
             <TouchableOpacity
               onPress={() => {
+                if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
                 setSearchText("");
                 setDebouncedQuery("");
               }}
@@ -84,34 +111,58 @@ const SearchScreen = () => {
               <Text className="text-gray-500">No users found for "{debouncedQuery}"</Text>
             </View>
           ) : (
-            searchResults.map((user: User) => (
-              <View
-                key={user._id}
-                className="flex-row items-center p-4 border-b border-gray-100"
-              >
-                <Image
-                  source={{ uri: user.profilePicture || "" }}
-                  style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
-                />
-                <View className="flex-1">
-                  <Text className="font-semibold text-gray-900">
-                    {user.firstName} {user.lastName}
-                  </Text>
-                  <Text className="text-gray-500 text-sm">@{user.username}</Text>
-                  {user.bio ? (
-                    <Text className="text-gray-700 text-sm mt-1" numberOfLines={2}>
-                      {user.bio}
+            searchResults.map((user: User) => {
+              const isFollowing = isFollowingUser(user._id);
+              const isSelf = currentUser?._id && user._id.toString() === currentUser._id.toString();
+
+              return (
+                <View
+                  key={user._id}
+                  className="flex-row items-center p-4 border-b border-gray-100"
+                >
+                  <Image
+                    source={{
+                      uri:
+                        user.profilePicture ||
+                        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
+                    }}
+                    style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
+                  />
+                  <View className="flex-1">
+                    <Text className="font-semibold text-gray-900">
+                      {user.firstName} {user.lastName}
                     </Text>
-                  ) : null}
-                </View>
-                {/* Don't show follow button for yourself */}
-                {currentUser && user._id !== currentUser._id && (
-                  <View className="border border-gray-300 px-4 py-1 rounded-full">
-                    <Text className="font-semibold text-gray-900 text-sm">Follow</Text>
+                    <Text className="text-gray-500 text-sm">@{user.username}</Text>
+                    {user.bio ? (
+                      <Text className="text-gray-700 text-sm mt-1" numberOfLines={2}>
+                        {user.bio}
+                      </Text>
+                    ) : null}
                   </View>
-                )}
-              </View>
-            ))
+
+                  {!isSelf && (
+                    <TouchableOpacity
+                      onPress={() => followMutation.mutate(user._id)}
+                      disabled={followMutation.isPending}
+                      className={`px-4 py-1.5 rounded-full ${
+                        isFollowing
+                          ? "bg-white border border-gray-300"
+                          : "bg-black"
+                      }`}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text
+                        className={`font-semibold text-sm ${
+                          isFollowing ? "text-gray-900" : "text-white"
+                        }`}
+                      >
+                        {isFollowing ? "Following" : "Follow"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })
           )
         ) : (
           /* Trending topics (default view) */

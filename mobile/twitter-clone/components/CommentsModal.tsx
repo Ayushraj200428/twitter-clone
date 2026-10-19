@@ -19,14 +19,24 @@ interface CommentsModalProps {
 }
 
 const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
-  const { commentText, setCommentText, createComment, deleteComment, isCreatingComment } =
-    useComments();
+  const {
+    comments: fetchedComments,
+    commentText,
+    setCommentText,
+    createComment,
+    deleteComment,
+    isCreatingComment,
+    isDeletingComment,
+  } = useComments(selectedPost?._id);
+
   const { currentUser } = useCurrentUser();
 
   const handleClose = () => {
     onClose();
     setCommentText("");
   };
+
+  const comments = fetchedComments ?? selectedPost?.comments ?? [];
 
   return (
     <Modal visible={!!selectedPost} animationType="slide" presentationStyle="pageSheet">
@@ -45,63 +55,80 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
           <View className="border-b border-gray-100 bg-white p-4">
             <View className="flex-row">
               <Image
-                source={{ uri: selectedPost.user.profilePicture }}
+                source={{
+                  uri:
+                    selectedPost.user?.profilePicture ||
+                    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
+                }}
                 className="size-12 rounded-full mr-3"
               />
               <View className="flex-1">
                 <View className="flex-row items-center mb-1">
                   <Text className="font-bold text-gray-900 mr-1">
-                    {selectedPost.user.firstName} {selectedPost.user.lastName}
+                    {selectedPost.user?.firstName || ""} {selectedPost.user?.lastName || ""}
                   </Text>
-                  <Text className="text-gray-500 ml-1">@{selectedPost.user.username}</Text>
+                  <Text className="text-gray-500 ml-1">@{selectedPost.user?.username || "user"}</Text>
                 </View>
-                {selectedPost.content && (
+                {selectedPost.content ? (
                   <Text className="text-gray-900 text-base leading-5 mb-3">
                     {selectedPost.content}
                   </Text>
-                )}
-                {selectedPost.image && (
+                ) : null}
+                {selectedPost.image ? (
                   <Image
                     source={{ uri: selectedPost.image }}
                     className="w-full h-48 rounded-2xl mb-3"
                     resizeMode="cover"
                   />
-                )}
+                ) : null}
               </View>
             </View>
           </View>
 
           {/* COMMENTS LIST */}
-          {selectedPost.comments.length === 0 ? (
+          {comments.length === 0 ? (
             <View className="p-8 items-center">
               <Text className="text-gray-400">No comments yet. Be the first!</Text>
             </View>
           ) : (
-            selectedPost.comments.map((comment) => {
-              const isOwnComment = currentUser?._id?.toString() === comment.user._id?.toString();
+            comments.map((comment) => {
+              const currentUserId = currentUser?._id?.toString();
+              const commentAuthorId = comment.user?._id?.toString();
+              const postAuthorId = selectedPost.user?._id?.toString();
+
+              const canDeleteComment =
+                !!currentUserId &&
+                (commentAuthorId === currentUserId || postAuthorId === currentUserId);
+
               return (
                 <View key={comment._id} className="border-b border-gray-100 bg-white p-4">
                   <View className="flex-row">
                     <Image
-                      source={{ uri: comment.user.profilePicture }}
+                      source={{
+                        uri:
+                          comment.user?.profilePicture ||
+                          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
+                      }}
                       className="w-10 h-10 rounded-full mr-3"
                     />
                     <View className="flex-1">
                       <View className="flex-row items-center justify-between mb-1">
                         <View className="flex-row items-center flex-1">
                           <Text className="font-bold text-gray-900 mr-1">
-                            {comment.user.firstName} {comment.user.lastName}
+                            {comment.user?.firstName || ""} {comment.user?.lastName || ""}
                           </Text>
                           <Text className="text-gray-500 text-sm ml-1">
-                            @{comment.user.username}
+                            @{comment.user?.username || "user"}
                           </Text>
                         </View>
-                        {isOwnComment && (
+                        {canDeleteComment && (
                           <TouchableOpacity
                             onPress={() => deleteComment(comment._id)}
+                            disabled={isDeletingComment}
                             className="ml-2 p-1"
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Feather name="trash" size={16} color="#657786" />
+                            <Feather name="trash-2" size={16} color="#E0245E" />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -119,7 +146,11 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
           <View className="p-4 border-t border-gray-100">
             <View className="flex-row">
               <Image
-                source={{ uri: currentUser?.profilePicture }}
+                source={{
+                  uri:
+                    currentUser?.profilePicture ||
+                    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
+                }}
                 className="size-10 rounded-full mr-3"
               />
               <View className="flex-1">

@@ -1,22 +1,55 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useApiClient } from "../utils/api";
 
-const compressImage = async (uri: string): Promise<string> => {
-  const ctx = ImageManipulator.manipulate(uri);
-  ctx.resize({ width: 1024 });
-  const img = await ctx.renderAsync();
-  const result = await img.saveAsync({ compress: 0.6, format: SaveFormat.JPEG });
-  return result.uri;
+const compressAndGetBase64 = async (uri: string, directBase64?: string | null): Promise<string> => {
+  // If already base64 data URI, return as-is
+  if (uri.startsWith("data:image/")) {
+    return uri;
+  }
+
+  try {
+    const manipulated = await manipulateAsync(
+      uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.6, format: SaveFormat.JPEG, base64: true }
+    );
+    if (manipulated.base64) {
+      return `data:image/jpeg;base64,${manipulated.base64}`;
+    }
+  } catch (err) {
+    console.warn("manipulateAsync failed, falling back:", err);
+  }
+
+  if (directBase64) {
+    return directBase64.startsWith("data:")
+      ? directBase64
+      : `data:image/jpeg;base64,${directBase64}`;
+  }
+
+  // Fallback to FileSystem for native platforms
+  if (Platform.OS !== "web") {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return `data:image/jpeg;base64,${base64}`;
+    } catch (fsErr) {
+      console.warn("FileSystem read failed:", fsErr);
+    }
+  }
+
+  return uri;
 };
 
 export const useCreatePost = () => {
   const [content, setContent] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageBase64, setSelectedImageBase64] = useState<string | null>(null);
   const api = useApiClient();
   const queryClient = useQueryClient();
 
@@ -25,12 +58,7 @@ export const useCreatePost = () => {
       let imageBase64: string | undefined;
 
       if (postData.imageUri) {
-        // Compress the image before encoding to stay under Vercel's 4.5MB body limit
-        const compressedUri = await compressImage(postData.imageUri);
-        const base64 = await FileSystem.readAsStringAsync(compressedUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        imageBase64 = `data:image/jpeg;base64,${base64}`;
+        imageBase64 = await compressAndGetBase64(postData.imageUri, selectedImageBase64);
       }
 
       return api.post("/api/posts", {
@@ -41,7 +69,9 @@ export const useCreatePost = () => {
     onSuccess: () => {
       setContent("");
       setSelectedImage(null);
+      setSelectedImageBase64(null);
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["userPosts"] });
       Alert.alert("Success", "Post created successfully!");
     },
     onError: (error: any) => {
@@ -55,32 +85,46 @@ export const useCreatePost = () => {
   });
 
   const handleImagePicker = async (useCamera = false) => {
-    const permResult = useCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const permResult = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (permResult.status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        `Please grant access to your ${useCamera ? "camera" : "photo library"}`
-      );
-      return;
+      if (permResult.status !== "granted") {
+        Alert.alert(
+          "Permission needed",
+          `Please grant access to your ${useCamera ? "camera" : "photo library"}`
+        );
+        return;
+      }
+
+      const opts: ImagePicker.ImagePickerOptions = {
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+        base64: true,
+      };
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(opts)
+        : await ImagePicker.launchImageLibraryAsync({
+            ...opts,
+            mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ["images"],
+          });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedImage(asset.uri);
+        if (asset.base64) {
+          setSelectedImageBase64(`data:image/jpeg;base64,${asset.base64}`);
+        } else {
+          setSelectedImageBase64(null);
+        }
+      }
+    } catch (pickerError) {
+      console.error("Image picker error:", pickerError);
+      Alert.alert("Error", "Could not open image picker. Please try again.");
     }
-
-    const opts = {
-      allowsEditing: true,
-      aspect: [16, 9] as [number, number],
-      quality: 0.8 as const,
-    };
-
-    const result = useCamera
-      ? await ImagePicker.launchCameraAsync(opts)
-      : await ImagePicker.launchImageLibraryAsync({
-          ...opts,
-          mediaTypes: ["images"] as any,
-        });
-
-    if (!result.canceled) setSelectedImage(result.assets[0].uri);
   };
 
   const createPost = () => {
@@ -101,7 +145,10 @@ export const useCreatePost = () => {
     isCreating: createPostMutation.isPending,
     pickImageFromGallery: () => handleImagePicker(false),
     takePhoto: () => handleImagePicker(true),
-    removeImage: () => setSelectedImage(null),
+    removeImage: () => {
+      setSelectedImage(null);
+      setSelectedImageBase64(null);
+    },
     createPost,
   };
 };

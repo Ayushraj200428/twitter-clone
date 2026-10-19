@@ -89,6 +89,7 @@ const EditProfileModal = ({
               multiline
               numberOfLines={3}
               textAlignVertical="top"
+              maxLength={160}
             />
           </View>
 

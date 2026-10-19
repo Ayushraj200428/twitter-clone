@@ -15,8 +15,10 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-function formatJoinDate(dateStr: string): string {
+function formatJoinDate(dateStr?: string): string {
+  if (!dateStr) return "Recently";
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Recently";
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
@@ -99,7 +101,11 @@ const ProfileScreen = () => {
         <View className="px-4 pb-4 border-b border-gray-100">
           <View className="flex-row justify-between items-end mb-4" style={{ marginTop: -64 }}>
             <Image
-              source={{ uri: currentUser.profilePicture }}
+              source={{
+                uri:
+                  currentUser.profilePicture ||
+                  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
+              }}
               style={{
                 width: 128,
                 height: 128,
