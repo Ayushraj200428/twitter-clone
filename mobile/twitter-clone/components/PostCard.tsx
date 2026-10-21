@@ -1,7 +1,7 @@
 import { Post, User } from "../types";
 import { formatDate, formatNumber } from "../utils/formatters";
 import { AntDesign, Feather } from "@expo/vector-icons";
-import { View, Text, Alert, Image, TouchableOpacity, Share } from "react-native";
+import { View, Text, Alert, Image, TouchableOpacity, Share, Platform } from "react-native";
 
 interface PostCardProps {
   post: Post;
@@ -13,13 +13,18 @@ interface PostCardProps {
 }
 
 const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: PostCardProps) => {
-  // Compare using string form to handle both ObjectId objects and plain strings
   const isOwnPost =
     currentUser && post.user?._id
       ? post.user._id.toString() === currentUser._id.toString()
       : false;
 
   const handleDelete = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to delete this post?")) {
+        onDelete(post._id);
+      }
+      return;
+    }
     Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
       { text: "Cancel", style: "cancel" },
       {

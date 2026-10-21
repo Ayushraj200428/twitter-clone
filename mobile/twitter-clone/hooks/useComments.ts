@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import { useApiClient, commentApi } from "../utils/api";
 import { Comment } from "../types";
 
 export const useComments = (postId?: string) => {
   const [commentText, setCommentText] = useState("");
+  // Track which specific comment is pending confirmation of deletion
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Track which specific comment is actively being deleted (API in-flight)
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const api = useApiClient();
   const queryClient = useQueryClient();
 
@@ -51,9 +55,13 @@ export const useComments = (postId?: string) => {
       return response.data;
     },
     onSuccess: () => {
+      setDeletingCommentId(null);
+      setConfirmDeleteId(null);
       invalidateData();
     },
     onError: (error: any) => {
+      setDeletingCommentId(null);
+      setConfirmDeleteId(null);
       const message =
         error?.response?.data?.error ||
         error?.message ||
@@ -70,15 +78,38 @@ export const useComments = (postId?: string) => {
     createCommentMutation.mutate({ postId: targetPostId, content: commentText.trim() });
   };
 
-  const deleteComment = (commentId: string) => {
-    Alert.alert("Delete Comment", "Are you sure you want to delete this comment?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => deleteCommentMutation.mutate(commentId),
-      },
-    ]);
+  // Step 1: user taps trash icon — show inline confirm UI
+  const requestDeleteComment = (commentId: string) => {
+    if (Platform.OS !== "web") {
+      // Native: use Alert dialog
+      Alert.alert("Delete Comment", "Are you sure you want to delete this comment?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setDeletingCommentId(commentId);
+            deleteCommentMutation.mutate(commentId);
+          },
+        },
+      ]);
+    } else {
+      // Web: show inline confirm buttons instead of window.confirm (which can be
+      // blocked inside a Modal overlay)
+      setConfirmDeleteId(commentId);
+    }
+  };
+
+  // Step 2 (web only): user confirms via inline UI
+  const confirmDeleteComment = (commentId: string) => {
+    setDeletingCommentId(commentId);
+    setConfirmDeleteId(null);
+    deleteCommentMutation.mutate(commentId);
+  };
+
+  // Step 2 (web only): user cancels
+  const cancelDeleteComment = () => {
+    setConfirmDeleteId(null);
   };
 
   return {
@@ -87,8 +118,13 @@ export const useComments = (postId?: string) => {
     commentText,
     setCommentText,
     createComment,
-    deleteComment,
+    // renamed: requestDeleteComment is what the trash icon calls
+    deleteComment: requestDeleteComment,
+    confirmDeleteComment,
+    cancelDeleteComment,
     isCreatingComment: createCommentMutation.isPending,
     isDeletingComment: deleteCommentMutation.isPending,
+    deletingCommentId,
+    confirmDeleteId,
   };
 };

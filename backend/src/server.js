@@ -13,7 +13,38 @@ import { arcjetMiddleware } from "./middleware/arcjet.middleware.js";
 
 const app = express();
 
-app.use(cors());
+// Allowed origins list. Always includes the Expo web dev server.
+// Add more via CORS_ORIGIN env var (comma-separated) for production domains.
+const ALLOWED_ORIGINS = new Set([
+  "http://localhost:8081",   // Expo web (browser)
+  "http://localhost:19006",  // Expo web (older SDK fallback)
+  "http://localhost:3000",   // common React dev server
+  ...(ENV.CORS_ORIGIN
+    ? ENV.CORS_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean)
+    : []),
+]);
+
+const corsOptions = {
+  // Reflect the request Origin back when it is in the allow-list, or allow
+  // any non-browser client (React Native / Expo Go on device / Postman).
+  // Browsers always send an Origin header; non-browser clients often don't.
+  origin: (origin, callback) => {
+    // No origin = same-origin request or non-browser client → allow
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.has(origin)) return callback(null, origin);
+    // Also allow any exp:// or http:// Expo Go deep-link origins from LAN IPs
+    if (/^exp:\/\//.test(origin) || /^http:\/\/192\.168\./.test(origin) || /^http:\/\/10\./.test(origin)) {
+      return callback(null, origin);
+    }
+    callback(null, false);
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: "10mb" })); // increased for base64 image uploads
 
 app.use(clerkMiddleware());

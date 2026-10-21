@@ -135,6 +135,22 @@ export const deletePost = asyncHandler(async (req, res) => {
     return res.status(403).json({ error: "You can only delete your own posts" });
   }
 
+  // Delete image from Cloudinary if one is attached to this post.
+  // Cloudinary URLs look like: .../upload/v<version>/<folder>/<public_id>.<ext>
+  // We extract the public_id (including folder) to call destroy().
+  if (post.image) {
+    try {
+      // Extract everything between "/upload/" and the file extension
+      const match = post.image.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z]+$/);
+      if (match && match[1]) {
+        await cloudinary.uploader.destroy(match[1]);
+      }
+    } catch (imgErr) {
+      // Log but don't fail the deletion if image cleanup errors
+      console.error("Cloudinary image deletion error:", imgErr.message);
+    }
+  }
+
   // Cascading deletes for comments and notifications associated with the post
   await Comment.deleteMany({ post: postId });
   await Notification.deleteMany({ post: postId });

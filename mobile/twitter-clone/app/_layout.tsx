@@ -5,6 +5,7 @@ import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { Stack } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
+import { Platform } from "react-native";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,14 +23,14 @@ export default function RootLayout() {
   return (
     <ClerkProvider
       publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-      tokenCache={tokenCache}
+      tokenCache={Platform.OS === "web" ? undefined : tokenCache}
     >
       <QueryClientProvider client={queryClient}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
         </Stack>
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
       </QueryClientProvider>
     </ClerkProvider>
   );

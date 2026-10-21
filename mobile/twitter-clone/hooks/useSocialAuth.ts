@@ -23,10 +23,11 @@ export const useSocialAuth = () => {
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
       }
-    } catch (err) {
-      console.log("Error in social auth", err);
+    } catch (err: any) {
+      console.error("Error in social auth:", JSON.stringify(err, null, 2));
       const provider = strategy === "oauth_google" ? "Google" : "Apple";
-      Alert.alert("Error", `Failed to sign in with ${provider}. Please try again.`);
+      const message = err?.errors?.[0]?.longMessage || err?.message || "Please try again.";
+      Alert.alert(`${provider} Sign-In Failed`, message);
     } finally {
       setIsLoading(false);
     }

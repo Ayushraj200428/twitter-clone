@@ -1,7 +1,7 @@
 import { Notification } from "../types";
 import { formatDate } from "../utils/formatters";
 import { Feather } from "@expo/vector-icons";
-import { View, Text, Alert, Image, TouchableOpacity } from "react-native";
+import { View, Text, Alert, Image, TouchableOpacity, Platform } from "react-native";
 
 interface NotificationCardProps {
   notification: Notification;
@@ -37,6 +37,12 @@ const NotificationCard = ({ notification, onDelete }: NotificationCardProps) => 
   };
 
   const handleDelete = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete this notification?")) {
+        onDelete(notification._id);
+      }
+      return;
+    }
     Alert.alert("Delete Notification", "Are you sure you want to delete this notification?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -55,7 +61,6 @@ const NotificationCard = ({ notification, onDelete }: NotificationCardProps) => 
             source={{ uri: notification.from.profilePicture }}
             className="size-12 rounded-full"
           />
-
           <View className="absolute -bottom-1 -right-1 size-6 bg-white items-center justify-center rounded-full">
             {getNotificationIcon()}
           </View>
@@ -72,18 +77,17 @@ const NotificationCard = ({ notification, onDelete }: NotificationCardProps) => 
               </Text>
               <Text className="text-gray-700 text-sm mb-2">{getNotificationText()}</Text>
             </View>
-
             <TouchableOpacity className="ml-2 p-1" onPress={handleDelete}>
               <Feather name="trash" size={16} color="#E0245E" />
             </TouchableOpacity>
           </View>
 
-          {notification.post && (
+          {!!notification.post && (
             <View className="bg-gray-50 rounded-lg p-3 mb-2">
               <Text className="text-gray-700 text-sm mb-1" numberOfLines={3}>
                 {notification.post.content}
               </Text>
-              {notification.post.image && (
+              {!!notification.post.image && (
                 <Image
                   source={{ uri: notification.post.image }}
                   className="w-full h-32 rounded-lg mt-2"
@@ -93,7 +97,7 @@ const NotificationCard = ({ notification, onDelete }: NotificationCardProps) => 
             </View>
           )}
 
-          {notification.comment && (
+          {!!notification.comment && (
             <View className="bg-blue-50 rounded-lg p-3 mb-2">
               <Text className="text-gray-600 text-xs mb-1">Comment:</Text>
               <Text className="text-gray-700 text-sm" numberOfLines={2}>
@@ -108,4 +112,5 @@ const NotificationCard = ({ notification, onDelete }: NotificationCardProps) => 
     </View>
   );
 };
+
 export default NotificationCard;
